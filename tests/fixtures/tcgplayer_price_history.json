@@ -1,0 +1,45 @@
+{
+  "count": 1,
+  "result": [
+    {
+      "skuId": "8355061",
+      "variant": "Normal",
+      "language": "English",
+      "condition": "Unopened",
+      "averageDailyQuantitySold": "19",
+      "averageDailyTransactionCount": "13",
+      "totalQuantitySold": "1796",
+      "totalTransactionCount": "1192",
+      "trendingMarketPricePercentages": {},
+      "buckets": [
+        {
+          "marketPrice": "173.09",
+          "quantitySold": "50",
+          "lowSalePrice": "150",
+          "lowSalePriceWithShipping": "165",
+          "highSalePrice": "180.99",
+          "highSalePriceWithShipping": "199.93",
+          "bucketStartDate": "2026-02-27"
+        },
+        {
+          "marketPrice": "170.50",
+          "quantitySold": "38",
+          "lowSalePrice": "145.00",
+          "lowSalePriceWithShipping": "160.00",
+          "highSalePrice": "185.00",
+          "highSalePriceWithShipping": "195.00",
+          "bucketStartDate": "2026-02-26"
+        },
+        {
+          "marketPrice": "168.25",
+          "quantitySold": "42",
+          "lowSalePrice": "140.00",
+          "lowSalePriceWithShipping": "155.00",
+          "highSalePrice": "190.00",
+          "highSalePriceWithShipping": "205.00",
+          "bucketStartDate": "2026-02-25"
+        }
+      ]
+    }
+  ]
+}

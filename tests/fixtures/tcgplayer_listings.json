@@ -1,0 +1,29 @@
+{
+  "errors": [],
+  "results": [
+    {
+      "totalResults": 55,
+      "resultId": "li8ce665fb-ca0d-47af-8dda-fef8ecdbbd14",
+      "aggregations": {
+        "condition": [
+          {
+            "value": "Unopened",
+            "count": 55.0
+          }
+        ]
+      },
+      "results": [
+        {
+          "productConditionId": 8355061,
+          "sellerName": "ElementalCollectible",
+          "price": 170.0,
+          "shippingPrice": 15.99,
+          "condition": "Unopened",
+          "printing": "Normal",
+          "quantity": 1,
+          "listingId": 642091633
+        }
+      ]
+    }
+  ]
+}

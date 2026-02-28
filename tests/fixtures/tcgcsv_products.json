@@ -1,0 +1,41 @@
+{
+  "totalItems": 2,
+  "success": true,
+  "errors": [],
+  "results": [
+    {
+      "productId": 593355,
+      "name": "Prismatic Evolutions Elite Trainer Box",
+      "cleanName": "Prismatic Evolutions Elite Trainer Box",
+      "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/593355_200w.jpg",
+      "categoryId": 3,
+      "groupId": 23821,
+      "url": "https://www.tcgplayer.com/product/593355/pokemon-sv-prismatic-evolutions-prismatic-evolutions-elite-trainer-box",
+      "modifiedOn": "2025-12-03T20:30:55.763",
+      "imageCount": 1,
+      "presaleInfo": {
+        "isPresale": false,
+        "releasedOn": null,
+        "note": null
+      },
+      "extendedData": []
+    },
+    {
+      "productId": 593294,
+      "name": "Prismatic Evolutions Booster Pack",
+      "cleanName": "Prismatic Evolutions Booster Pack",
+      "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/593294_200w.jpg",
+      "categoryId": 3,
+      "groupId": 23821,
+      "url": "https://www.tcgplayer.com/product/593294/pokemon-sv-prismatic-evolutions-prismatic-evolutions-booster-pack",
+      "modifiedOn": "2025-01-17T05:10:13.437",
+      "imageCount": 1,
+      "presaleInfo": {
+        "isPresale": false,
+        "releasedOn": "2025-01-17T00:00:00",
+        "note": null
+      },
+      "extendedData": []
+    }
+  ]
+}
