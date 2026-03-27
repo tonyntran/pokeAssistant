@@ -1408,6 +1408,7 @@ from pokeassistant.models import (
     Base, Product, PriceSnapshot, GradedPrice, PopulationReport, TrendDataPoint,
 )
 from pokeassistant.repositories.sqlalchemy_repo import SQLAlchemyRepository
+from pokeassistant.database import get_db
 from pokeassistant.api import app, get_repo
 
 
