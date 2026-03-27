@@ -96,7 +96,8 @@ These are calculated at query time in the API/repository layer:
 | `psa10_premium_pct` | `(psa10_price - market_price) / market_price * 100` from graded_prices |
 | `condition_prices` | NM = market, LP = 76%, MP = 60%, HP = 40% of market |
 | `grading_trend` | Compare latest graded_price to previous entry: "up" if higher, "down" if lower, "flat" if within 2% |
-| `product_type` | Set by scrapers: TCGPlayer/TCGCSV categories containing "Single" → "card", otherwise → "sealed" |
+
+**Note on `product_type`:** This is a *stored* column (see schema extensions above), not a computed field. Scrapers set it based on TCGPlayer/TCGCSV category: categories containing "Single" → `"card"`, otherwise → `"sealed"`.
 
 ---
 
