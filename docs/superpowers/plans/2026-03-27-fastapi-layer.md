@@ -374,9 +374,9 @@ Expected: ImportError or failures because `Base` doesn't exist yet.
 
 - [ ] **Step 3: Write the new models.py**
 
-Replace `src/pokeassistant/models.py` with the full SQLAlchemy ORM models from the spec (Section 2). Include `dollars_to_cents`, `Base`, and all 6 model classes with `DateTime`/`Date` columns, ForeignKeys, relationships, `__repr__`, and `Product.created_at` with `default=datetime.now`.
+Replace `src/pokeassistant/models.py` with the full SQLAlchemy ORM models from the spec (Section 2). Include `dollars_to_cents`, `Base`, and all 6 model classes with `DateTime`/`Date` columns, ForeignKeys, relationships (with `order_by` for deterministic ordering), `__repr__`, and `Product.created_at` with `default=datetime.now`.
 
-Complete file content — see spec Section 2 for the exact code.
+Complete file content — see spec Section 2 for the exact code. **Important:** All relationships on `Product` must include `order_by` (e.g., `order_by="PriceSnapshot.timestamp"`) to ensure the API's `[-1]` access patterns work on Postgres.
 
 - [ ] **Step 4: Run tests — verify they pass**
 
@@ -1335,7 +1335,23 @@ Expected: NotImplementedError.
 
 Replace the read operation stubs in `sqlalchemy_repo.py` with full implementations. Key logic:
 
-- `list_cards` / `list_products`: Query `Product` filtered by `product_type`, with `LIKE` search on name, sort mapping (`market_price` sorts by latest snapshot's `market_price_cents` via subquery, `name` sorts by `Product.name`, `release_date` sorts by `Product.release_date`), pagination via `offset`/`limit`, count via separate `func.count()` query.
+- `list_cards` / `list_products`: Query `Product` filtered by `product_type`, with `LIKE` search on name, pagination via `offset`/`limit`, count via separate `func.count()` query. Sort mapping:
+  - `name`: `order_by(Product.name)`
+  - `release_date`: `order_by(Product.release_date)`
+  - `market_price` (requires subquery for latest snapshot):
+    ```python
+    from sqlalchemy import select, func
+    latest_price = (
+        select(PriceSnapshot.market_price_cents)
+        .where(PriceSnapshot.product_id == Product.product_id)
+        .order_by(PriceSnapshot.timestamp.desc())
+        .limit(1)
+        .correlate(Product)
+        .scalar_subquery()
+    )
+    query = query.order_by(desc(latest_price))  # or asc()
+    ```
+  - `change`: Similar subquery approach comparing the last two snapshots — or just order by name as a simpler fallback (change sort is best-effort).
 - `get_card` / `get_product`: `session.get(Product, product_id)`.
 - `get_price_history`: Filter `PriceSnapshot` by product_id, optionally filter by date range based on period mapping (`1M`=30d, `3M`=90d, `6M`=180d, `1Y`=365d, `ALL`=no filter), order by timestamp ascending.
 - `get_price_change`: Get last 2 snapshots ordered by timestamp desc, compute delta.
@@ -1410,7 +1426,11 @@ def client(session):
     def override_repo():
         return repo
 
+    def override_db():
+        yield session
+
     app.dependency_overrides[get_repo] = override_repo
+    app.dependency_overrides[get_db] = override_db
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -2057,7 +2077,7 @@ Update `src/pokeassistant/cli.py`:
 
 - [ ] **Step 2: Update test_cli.py**
 
-The argument parsing tests (`TestParseArgs`) stay unchanged. The `TestMainNoSource` tests stay unchanged (they test early exits before any DB interaction). No additional test changes needed since the CLI tests mock at the scraper level, not the DB level.
+The argument parsing tests (`TestParseArgs`) stay unchanged. The `TestMainNoSource` tests stay unchanged — they test early exits that happen before any DB interaction, so the DB backend doesn't matter. No additional test changes needed for existing CLI tests.
 
 - [ ] **Step 3: Run CLI tests**
 

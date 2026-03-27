@@ -1,7 +1,7 @@
 # FastAPI API Layer — Design Spec
 
 **Date:** 2026-03-27  
-**Status:** Approved (Rev 2 — post user review)  
+**Status:** Approved (Rev 3 — DateTime/Date types, Product.created_at default, get_engine() singleton docs)  
 **Goal:** Build a FastAPI API layer to connect the React frontend ("Pack Magik") to the existing Python/SQLite backend, migrating to SQLAlchemy ORM with a repository pattern for future DB swappability (e.g., Supabase/Postgres).
 
 ---
@@ -176,10 +176,16 @@ class Product(Base):
     # Scrapers can omit created_at — SQLAlchemy fills it automatically.
     # Existing scraper code like Product(product_id=1, name="X") just works.
 
-    price_snapshots = relationship("PriceSnapshot", back_populates="product")
-    sale_records = relationship("SaleRecord", back_populates="product")
-    graded_prices = relationship("GradedPrice", back_populates="product")
-    population_reports = relationship("PopulationReport", back_populates="product")
+    # order_by ensures deterministic ordering for [-1] access in API layer.
+    # Without this, Postgres won't guarantee insertion order.
+    price_snapshots = relationship("PriceSnapshot", back_populates="product",
+                                    order_by="PriceSnapshot.timestamp")
+    sale_records = relationship("SaleRecord", back_populates="product",
+                                order_by="SaleRecord.sale_date")
+    graded_prices = relationship("GradedPrice", back_populates="product",
+                                  order_by="GradedPrice.timestamp")
+    population_reports = relationship("PopulationReport", back_populates="product",
+                                      order_by="PopulationReport.timestamp")
 
     def __repr__(self):
         return f"<Product(id={self.product_id}, name='{self.name}', type='{self.product_type}')>"
