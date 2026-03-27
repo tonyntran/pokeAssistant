@@ -79,7 +79,7 @@ CLI (cli.py) and Scrapers also use the Repository Interface.
 | `card_number` | TEXT | Yes | Set number, e.g. "284/217" |
 | `product_type` | TEXT | Yes | "card" or "sealed" — distinguishes singles from sealed products |
 | `rarity` | TEXT | Yes | Card rarity for future pull rate calculations |
-| `release_date` | TEXT | Yes | ISO 8601 date (YYYY-MM-DD) — enables "Sort: Release" on products |
+| `release_date` | Date | Yes | Enables "Sort: Release" on products (SQLAlchemy `Date` type) |
 
 ### New Column on `population_reports` Table
 
@@ -113,13 +113,14 @@ The `image_url` field is populated by scrapers from these sources (in priority o
 
 If a scraper doesn't have an image URL, the field is left `null`. The frontend must handle `null` gracefully (it already does via `onError` img handlers).
 
-### Timestamp Convention
+### Timestamp/Date Column Types
 
-**All timestamp/date fields across all tables MUST be stored as ISO 8601 strings:**
-- Timestamps: `YYYY-MM-DDTHH:MM:SS` (e.g., `2026-03-27T14:30:00`)
-- Dates: `YYYY-MM-DD` (e.g., `2026-03-27`)
+All timestamp and date columns use **SQLAlchemy's `DateTime` and `Date` types** (not `Text`). This means:
+- **Python side:** Scrapers pass native `datetime` and `date` objects (which they already do). No `.isoformat()` conversion needed.
+- **SQLite storage:** SQLAlchemy automatically converts to/from ISO 8601 strings under the hood. Sorting works correctly.
+- **Postgres/Supabase:** When we migrate, `DateTime`/`Date` map directly to native timestamp/date columns. No migration of stored data needed.
 
-This ensures correct lexicographic sorting in SQLite (which has no native datetime type). Scrapers must convert all source date formats to ISO 8601 before insertion. The existing scrapers already use `.isoformat()` which produces this format.
+Scrapers must ensure all timestamps are timezone-naive or consistently UTC. The existing scrapers all use `datetime.now()` and `date.fromisoformat()`, which produce naive datetimes — this is fine for now.
 
 ### Computed Fields (Not Stored)
 These are calculated at query time in the API/repository layer:
@@ -139,7 +140,9 @@ These are calculated at query time in the API/repository layer:
 **File:** `src/pokeassistant/models.py` (replaces existing dataclasses)
 
 ```python
-from sqlalchemy import Column, Integer, Text, Float, ForeignKey, UniqueConstraint
+from datetime import datetime, date as date_type
+
+from sqlalchemy import Column, Integer, Text, Float, Date, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -167,8 +170,11 @@ class Product(Base):
     card_number = Column(Text)           # NEW
     product_type = Column(Text)          # NEW: "card" or "sealed"
     rarity = Column(Text)               # NEW
-    release_date = Column(Text)          # NEW: ISO 8601 date
-    created_at = Column(Text, nullable=False)
+    release_date = Column(Date)          # NEW
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    #                                     ^^^^^^^ Python-side default
+    # Scrapers can omit created_at — SQLAlchemy fills it automatically.
+    # Existing scraper code like Product(product_id=1, name="X") just works.
 
     price_snapshots = relationship("PriceSnapshot", back_populates="product")
     sale_records = relationship("SaleRecord", back_populates="product")
@@ -183,7 +189,7 @@ class PriceSnapshot(Base):
     __tablename__ = "price_snapshots"
     id = Column(Integer, primary_key=True, autoincrement=True)
     product_id = Column(Integer, ForeignKey("products.product_id"), nullable=False)
-    timestamp = Column(Text, nullable=False)
+    timestamp = Column(DateTime, nullable=False)
     source = Column(Text, nullable=False)
     low_price_cents = Column(Integer)
     market_price_cents = Column(Integer)
@@ -194,14 +200,14 @@ class PriceSnapshot(Base):
     product = relationship("Product", back_populates="price_snapshots")
 
     def __repr__(self):
-        return f"<PriceSnapshot(product_id={self.product_id}, market={self.market_price_cents}, ts='{self.timestamp}')>"
+        return f"<PriceSnapshot(product_id={self.product_id}, market={self.market_price_cents}, ts={self.timestamp})>"
 
 
 class SaleRecord(Base):
     __tablename__ = "sale_records"
     id = Column(Integer, primary_key=True, autoincrement=True)
     product_id = Column(Integer, ForeignKey("products.product_id"), nullable=False)
-    sale_date = Column(Text, nullable=False)
+    sale_date = Column(Date, nullable=False)
     condition = Column(Text)
     variant = Column(Text)
     price_cents = Column(Integer, nullable=False)
@@ -212,20 +218,20 @@ class SaleRecord(Base):
     product = relationship("Product", back_populates="sale_records")
 
     def __repr__(self):
-        return f"<SaleRecord(product_id={self.product_id}, price={self.price_cents}, date='{self.sale_date}')>"
+        return f"<SaleRecord(product_id={self.product_id}, price={self.price_cents}, date={self.sale_date})>"
 
 
 class TrendDataPoint(Base):
     __tablename__ = "trend_data"
     id = Column(Integer, primary_key=True, autoincrement=True)
     keyword = Column(Text, nullable=False)
-    date = Column(Text, nullable=False)
+    date = Column(Date, nullable=False)
     interest = Column(Integer, nullable=False)
     source = Column(Text, nullable=False)
     __table_args__ = (UniqueConstraint("keyword", "date"),)
 
     def __repr__(self):
-        return f"<TrendDataPoint(keyword='{self.keyword}', date='{self.date}', interest={self.interest})>"
+        return f"<TrendDataPoint(keyword='{self.keyword}', date={self.date}, interest={self.interest})>"
 
 
 class GradedPrice(Base):
@@ -234,7 +240,7 @@ class GradedPrice(Base):
     product_id = Column(Integer, ForeignKey("products.product_id"))  # FK added
     card_name = Column(Text, nullable=False)
     source = Column(Text, nullable=False)
-    timestamp = Column(Text, nullable=False)
+    timestamp = Column(DateTime, nullable=False)
     ungraded_cents = Column(Integer)
     grade_7_cents = Column(Integer)
     grade_8_cents = Column(Integer)
@@ -260,7 +266,7 @@ class PopulationReport(Base):
     card_name = Column(Text, nullable=False)
     gemrate_id = Column(Text, nullable=False)
     source = Column(Text, nullable=False)
-    timestamp = Column(Text, nullable=False)
+    timestamp = Column(DateTime, nullable=False)
     total_population = Column(Integer, nullable=False)
     psa_10 = Column(Integer)
     psa_9 = Column(Integer)
@@ -300,7 +306,18 @@ _SessionLocal = None
 
 
 def get_engine(db_url: str | None = None):
-    """Get or create the singleton SQLAlchemy engine."""
+    """Get or create the singleton SQLAlchemy engine.
+    
+    IMPORTANT: Once created, the engine URL is fixed for the process lifetime.
+    Passing a different db_url after first creation is silently ignored.
+    To switch databases (e.g., in tests), call reset_engine() first:
+    
+        reset_engine()
+        engine = get_engine("sqlite:///:memory:")
+    
+    The CLI and API both rely on POKEASSISTANT_DB_PATH env var (via get_db_path())
+    to determine the DB location, which is read at first-call time.
+    """
     global _engine
     if _engine is None:
         if db_url is None:
@@ -322,8 +339,14 @@ def get_session_factory(engine=None) -> sessionmaker:
 
 
 def reset_engine():
-    """Reset the engine singleton. Used in tests to swap in a test DB."""
+    """Reset the engine and session factory singletons.
+    
+    Required before switching databases (e.g., in tests).
+    After calling this, the next get_engine() call creates a fresh engine.
+    """
     global _engine, _SessionLocal
+    if _engine is not None:
+        _engine.dispose()  # Close all pooled connections
     _engine = None
     _SessionLocal = None
 
@@ -345,6 +368,7 @@ def get_db():
 **File:** `src/pokeassistant/schemas.py`
 
 ```python
+from datetime import datetime, date
 from pydantic import BaseModel
 from typing import Generic, TypeVar
 
@@ -398,7 +422,7 @@ class ProductSummary(BaseModel):
     market_price_cents: int | None
     change_cents: int | None
     change_pct: float | None
-    release_date: str | None
+    release_date: date | None       # Pydantic serializes as "YYYY-MM-DD" in JSON
 
 
 class ProductDetail(ProductSummary):
@@ -410,7 +434,7 @@ class ProductDetail(ProductSummary):
 # --- Price History ---
 
 class PriceHistoryPoint(BaseModel):
-    timestamp: str
+    timestamp: datetime             # Pydantic serializes as ISO 8601 in JSON
     market_price_cents: int | None
     low_price_cents: int | None
     high_price_cents: int | None
@@ -436,7 +460,7 @@ class PopulationRow(BaseModel):
 # --- Trends ---
 
 class TrendPoint(BaseModel):
-    date: str
+    date: date                      # Pydantic serializes as "YYYY-MM-DD" in JSON
     interest: int
     keyword: str
 
@@ -745,6 +769,11 @@ def run_server():
 - Each scraper returns model instances that the CLI passes to the repository
 - Scrapers must set `product_type` on Product instances: determine from the TCGPlayer category string using the classification rules in Section 1
 
+**Scraper compatibility notes:**
+- `Product(product_id=1, name="X")` works without passing `created_at` — the SQLAlchemy model has `default=datetime.now` which auto-fills it.
+- Scrapers already pass `datetime` objects for timestamps and `date` objects for dates (e.g., `datetime.now()`, `date.fromisoformat(...)`). Since the models now use `DateTime`/`Date` column types instead of `Text`, these are accepted directly — no `.isoformat()` conversion needed.
+- Scrapers return *transient* SQLAlchemy instances (not attached to any session). The repository's write methods handle `session.add()`. Do NOT reuse the same model instance across multiple repository calls — create fresh instances each time.
+
 ### db.py Removal
 - The old `db.py` is **deleted** after migration. All its functions are replaced by the repository.
 - **Before deleting:** Run the existing test suite against the old code to establish a regression baseline. Capture the passing test output. Then delete `db.py` and `test_db.py` together.
@@ -823,6 +852,7 @@ tests/
 - **Regression baseline first**: Run `pytest` against the current codebase and capture results before any changes.
 - **test_repository.py**: Uses in-memory SQLite (`sqlite:///:memory:`) via `reset_engine()` + custom engine injection. Tests all repository methods including upsert merge semantics, unique constraint ignore behavior, sort/filter/pagination, and computed field calculations.
 - **test_api.py**: Uses FastAPI `TestClient` (via `httpx`) with an in-memory DB. Tests all endpoints: happy path, 404s, empty data, pagination, sort params, invalid sort_by (422), health check.
+- **test_models.py**: Update expectations for SQLAlchemy behavior. Key change: `Product(product_id=1, name="Test").created_at` is no longer auto-set at construction time — the `default=datetime.now` only fires when SQLAlchemy flushes to the DB. Tests that check `created_at is not None` on an unflushed instance need to either flush first or test after insert.
 - **Scraper tests**: Remain mostly fixture-based; update model construction from dataclass to SQLAlchemy. Core scraping logic tests unchanged.
 - **test_cli.py**: Update to mock the repository instead of raw db functions.
 
