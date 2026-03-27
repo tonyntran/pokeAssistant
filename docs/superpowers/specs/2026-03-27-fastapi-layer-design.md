@@ -74,12 +74,17 @@ CLI (cli.py) and Scrapers also use the Repository Interface.
 | `product_type` | TEXT | Yes | "card" or "sealed" — distinguishes singles from sealed products |
 | `rarity` | TEXT | Yes | Card rarity for future pull rate calculations |
 
+### New Column on `population_reports` Table
+
+| Column | Type | Nullable | Purpose |
+|--------|------|----------|---------|
+| `product_id` | INTEGER (FK) | Yes | Links population data to a product, enabling joins from card detail views |
+
 ### Existing Tables (Unchanged Schema)
 - `price_snapshots` — no changes
 - `sale_records` — no changes
 - `trend_data` — no changes
-- `graded_prices` — no changes
-- `population_reports` — no changes
+- `graded_prices` — no changes (already has `product_id`)
 
 ### Computed Fields (Not Stored)
 These are calculated at query time in the API/repository layer:
@@ -90,6 +95,8 @@ These are calculated at query time in the API/repository layer:
 | `price_change_pct` | `(change / previous) * 100` |
 | `psa10_premium_pct` | `(psa10_price - market_price) / market_price * 100` from graded_prices |
 | `condition_prices` | NM = market, LP = 76%, MP = 60%, HP = 40% of market |
+| `grading_trend` | Compare latest graded_price to previous entry: "up" if higher, "down" if lower, "flat" if within 2% |
+| `product_type` | Set by scrapers: TCGPlayer/TCGCSV categories containing "Single" → "card", otherwise → "sealed" |
 
 ---
 
@@ -179,6 +186,7 @@ class GradedPrice(Base):
 class PopulationReport(Base):
     __tablename__ = "population_reports"
     id = Column(Integer, primary_key=True, autoincrement=True)
+    product_id = Column(Integer, ForeignKey("products.product_id"))  # NEW — enables join by product_id
     card_name = Column(Text, nullable=False)
     gemrate_id = Column(Text, nullable=False)
     source = Column(Text, nullable=False)
@@ -202,6 +210,8 @@ The `dollars_to_cents` utility function stays as a standalone helper.
 ## 3. Database Engine / Session Factory
 
 **File:** `src/pokeassistant/database.py`
+
+**Migration note:** `Base.metadata.create_all()` creates missing tables but won't ALTER existing ones. Since the database is currently empty (no data has been scraped yet), this is not a problem. For future schema changes after data exists, use Alembic or manual ALTER TABLE statements.
 
 ```python
 from sqlalchemy import create_engine
@@ -365,24 +375,24 @@ class CardRepository(ABC):
     @abstractmethod
     def search(self, query: str, result_type: str | None = None) -> list: ...
     
-    # Write (used by CLI/scrapers)
+    # Write (used by CLI/scrapers) — accept SQLAlchemy model instances
     @abstractmethod
-    def upsert_product(self, **kwargs) -> None: ...
+    def upsert_product(self, product: "Product") -> None: ...
     
     @abstractmethod
-    def insert_price_snapshot(self, **kwargs) -> None: ...
+    def insert_price_snapshot(self, snapshot: "PriceSnapshot") -> None: ...
     
     @abstractmethod
-    def insert_sale_record(self, **kwargs) -> None: ...
+    def insert_sale_record(self, sale: "SaleRecord") -> None: ...
     
     @abstractmethod
-    def insert_trend_data(self, **kwargs) -> None: ...
+    def insert_trend_data(self, trend: "TrendDataPoint") -> None: ...
     
     @abstractmethod
-    def insert_graded_price(self, **kwargs) -> None: ...
+    def insert_graded_price(self, graded: "GradedPrice") -> None: ...
     
     @abstractmethod
-    def insert_population_report(self, **kwargs) -> None: ...
+    def insert_population_report(self, report: "PopulationReport") -> None: ...
 ```
 
 ---
