@@ -1049,7 +1049,7 @@ export default function PackMagik(){
         </nav>
 
         {/* Bottom */}
-        <div className="px-2 pb-4 border-t border-gray-900 pt-3 space-y-1 overflow-hidden">
+        <div className="px-2 pb-6 border-t border-gray-900 pt-3 space-y-2 overflow-hidden">
           <div className="flex items-center gap-2 rounded-lg cursor-pointer hover:bg-gray-900/60 transition-colors"
             style={{padding:"8px 10px"}}>
             <div className="w-6 h-6 rounded bg-gray-700 flex items-center justify-center text-xs text-gray-300 font-medium" style={{flexShrink:0}}>US</div>
