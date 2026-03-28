@@ -180,3 +180,197 @@ class TestInsertPopulationReport:
         results = session.query(PopulationReport).all()
         assert len(results) == 1
         assert results[0].total_population == 16344
+
+
+class TestListCards:
+    def test_returns_only_cards(self, repo, session):
+        repo.upsert_product(Product(product_id=1, name="Card", product_type="card"))
+        repo.upsert_product(Product(product_id=2, name="ETB", product_type="sealed"))
+        cards, total = repo.list_cards()
+        assert total == 1
+        assert cards[0].product_id == 1
+
+    def test_pagination(self, repo):
+        for i in range(5):
+            repo.upsert_product(Product(product_id=i+1, name=f"Card {i}", product_type="card"))
+        cards, total = repo.list_cards(limit=2, offset=0)
+        assert len(cards) == 2
+        assert total == 5
+        cards2, _ = repo.list_cards(limit=2, offset=2)
+        assert len(cards2) == 2
+
+    def test_search_filter(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Umbreon ex", product_type="card"))
+        repo.upsert_product(Product(product_id=2, name="Pikachu ex", product_type="card"))
+        cards, total = repo.list_cards(search="umbreon")
+        assert total == 1
+        assert cards[0].name == "Umbreon ex"
+
+    def test_sort_by_name(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Zebra", product_type="card"))
+        repo.upsert_product(Product(product_id=2, name="Alpha", product_type="card"))
+        cards, _ = repo.list_cards(sort_by="name", order="asc")
+        assert cards[0].name == "Alpha"
+        assert cards[1].name == "Zebra"
+
+    def test_empty(self, repo):
+        cards, total = repo.list_cards()
+        assert cards == []
+        assert total == 0
+
+
+class TestGetCard:
+    def test_found(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Test", product_type="card"))
+        assert repo.get_card(1) is not None
+
+    def test_not_found(self, repo):
+        assert repo.get_card(999) is None
+
+
+class TestListProducts:
+    def test_returns_only_sealed(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Card", product_type="card"))
+        repo.upsert_product(Product(product_id=2, name="ETB", product_type="sealed"))
+        prods, total = repo.list_products()
+        assert total == 1
+        assert prods[0].product_id == 2
+
+    def test_sort_by_release_date(self, repo):
+        repo.upsert_product(Product(
+            product_id=1, name="Old", product_type="sealed",
+            release_date=date(2024, 1, 1),
+        ))
+        repo.upsert_product(Product(
+            product_id=2, name="New", product_type="sealed",
+            release_date=date(2025, 6, 1),
+        ))
+        prods, _ = repo.list_products(sort_by="release_date", order="desc")
+        assert prods[0].name == "New"
+
+
+class TestGetProduct:
+    def test_found(self, repo):
+        repo.upsert_product(Product(product_id=1, name="ETB", product_type="sealed"))
+        assert repo.get_product(1) is not None
+
+    def test_not_found(self, repo):
+        assert repo.get_product(999) is None
+
+
+class TestPriceHistory:
+    def test_returns_ordered(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Test"))
+        repo.insert_price_snapshot(PriceSnapshot(
+            product_id=1, timestamp=datetime(2025, 3, 1), source="s", market_price_cents=100,
+        ))
+        repo.insert_price_snapshot(PriceSnapshot(
+            product_id=1, timestamp=datetime(2025, 3, 15), source="s", market_price_cents=200,
+        ))
+        history = repo.get_price_history(1, period="ALL")
+        assert len(history) == 2
+        assert history[0].timestamp < history[1].timestamp
+
+    def test_period_filter(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Test"))
+        repo.insert_price_snapshot(PriceSnapshot(
+            product_id=1, timestamp=datetime(2020, 1, 1), source="s", market_price_cents=100,
+        ))
+        repo.insert_price_snapshot(PriceSnapshot(
+            product_id=1, timestamp=datetime.now(), source="s2", market_price_cents=200,
+        ))
+        history = repo.get_price_history(1, period="1M")
+        assert len(history) == 1  # Only the recent one
+
+
+class TestPriceChange:
+    def test_computes_change(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Test"))
+        repo.insert_price_snapshot(PriceSnapshot(
+            product_id=1, timestamp=datetime(2025, 3, 1), source="s", market_price_cents=1000,
+        ))
+        repo.insert_price_snapshot(PriceSnapshot(
+            product_id=1, timestamp=datetime(2025, 3, 15), source="s2", market_price_cents=1200,
+        ))
+        change_cents, change_pct = repo.get_price_change(1)
+        assert change_cents == 200
+        assert abs(change_pct - 20.0) < 0.01
+
+    def test_no_snapshots(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Test"))
+        change_cents, change_pct = repo.get_price_change(1)
+        assert change_cents is None
+        assert change_pct is None
+
+    def test_single_snapshot(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Test"))
+        repo.insert_price_snapshot(PriceSnapshot(
+            product_id=1, timestamp=datetime(2025, 3, 1), source="s", market_price_cents=1000,
+        ))
+        change_cents, change_pct = repo.get_price_change(1)
+        assert change_cents is None
+        assert change_pct is None
+
+
+class TestGetGrading:
+    def test_returns_grading(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Test"))
+        repo.insert_graded_price(GradedPrice(
+            product_id=1, card_name="Test", source="pc",
+            timestamp=datetime(2025, 6, 1), psa_10_cents=4000,
+        ))
+        results = repo.get_grading(1)
+        assert len(results) == 1
+
+
+class TestGetPopulation:
+    def test_returns_population(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Test"))
+        repo.insert_population_report(PopulationReport(
+            product_id=1, card_name="Test", gemrate_id="x",
+            source="gr", timestamp=datetime(2025, 6, 1), total_population=100,
+        ))
+        results = repo.get_population(1)
+        assert len(results) == 1
+
+
+class TestGetTrendData:
+    def test_returns_ordered(self, repo):
+        repo.insert_trend_data(TrendDataPoint(
+            keyword="test", date=date(2025, 3, 15), interest=80, source="gt",
+        ))
+        repo.insert_trend_data(TrendDataPoint(
+            keyword="test", date=date(2025, 3, 1), interest=50, source="gt",
+        ))
+        results = repo.get_trend_data("test")
+        assert len(results) == 2
+        assert results[0].date < results[1].date
+
+    def test_filters_by_keyword(self, repo):
+        repo.insert_trend_data(TrendDataPoint(
+            keyword="a", date=date(2025, 3, 1), interest=50, source="gt",
+        ))
+        repo.insert_trend_data(TrendDataPoint(
+            keyword="b", date=date(2025, 3, 1), interest=60, source="gt",
+        ))
+        results = repo.get_trend_data("a")
+        assert len(results) == 1
+
+
+class TestSearch:
+    def test_search_cards(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Umbreon ex", product_type="card"))
+        repo.upsert_product(Product(product_id=2, name="ETB", product_type="sealed"))
+        results = repo.search("umbreon", result_type="card")
+        assert len(results) == 1
+        assert results[0].name == "Umbreon ex"
+
+    def test_search_all(self, repo):
+        repo.upsert_product(Product(product_id=1, name="Umbreon ex", product_type="card"))
+        repo.upsert_product(Product(product_id=2, name="Umbreon Box", product_type="sealed"))
+        results = repo.search("umbreon")
+        assert len(results) == 2
+
+    def test_search_empty(self, repo):
+        results = repo.search("nonexistent")
+        assert results == []
