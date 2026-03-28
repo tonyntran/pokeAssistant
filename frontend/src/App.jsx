@@ -531,7 +531,7 @@ function CardDetailView({card,onBack}){
         <button className="text-gray-400 hover:text-white transition-colors"><Share2 size={18}/></button>
       </div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
           <div className="flex flex-col lg:flex-row gap-6">
             <div className="lg:w-72 flex-shrink-0">
               <div className="lg:sticky lg:top-4">
@@ -646,7 +646,7 @@ function ProductDetailView({product,onBack}){
         <button className="text-gray-400 hover:text-white transition-colors"><Share2 size={18}/></button>
       </div>
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Left */}
             <div className="lg:w-72 flex-shrink-0">
@@ -1049,7 +1049,7 @@ export default function PackMagik(){
         </nav>
 
         {/* Bottom */}
-        <div className="px-2 pb-6 border-t border-gray-900 pt-3 space-y-2 overflow-hidden">
+        <div className="px-2 pb-8 border-t border-gray-900 pt-4 space-y-3 overflow-hidden">
           <div className="flex items-center gap-2 rounded-lg cursor-pointer hover:bg-gray-900/60 transition-colors"
             style={{padding:"8px 10px"}}>
             <div className="w-6 h-6 rounded bg-gray-700 flex items-center justify-center text-xs text-gray-300 font-medium" style={{flexShrink:0}}>US</div>
@@ -1158,7 +1158,7 @@ export default function PackMagik(){
             </div>
 
             {/* Nav bar */}
-            <div className="flex flex-col items-center gap-3 px-4 mb-6">
+            <div className="flex flex-col items-center gap-3 px-4 md:px-8 mb-6">
               <div className="flex items-center gap-1 p-1 rounded-xl border border-gray-800" style={{background:"#0a0a0a"}}>
                 {primaryNavItems.map(item=>{
                   const Icon=navIcons[item];
@@ -1193,7 +1193,7 @@ export default function PackMagik(){
             </div>
 
             {/* Grid */}
-            <div className="pb-12" style={{paddingLeft:"16px", paddingRight:"16px"}}>
+            <div className="pb-12 px-4 md:px-8">
               {isProducts
                 ? <ProductGrid products={PRODUCTS} onProductClick={setSelProd}/>
                 : <CardGrid cards={CARDS} onCardClick={setSelCard}/>
