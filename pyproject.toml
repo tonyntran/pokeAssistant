@@ -6,13 +6,17 @@ build-backend = "setuptools.build_meta"
 name = "pokeassistant"
 version = "0.1.0"
 description = "Pokemon TCG price tracking and analysis tool"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "beautifulsoup4>=4.12",
     "playwright>=1.40",
     "pytrends>=4.9",
     "requests>=2.31",
     "pandas>=2.1",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "sqlalchemy>=2.0",
+    "pydantic>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -20,16 +24,18 @@ dev = [
     "pytest>=7.4",
     "pytest-asyncio>=0.23",
     "ruff>=0.1",
+    "httpx>=0.27",
 ]
 
 [project.scripts]
 pokeassistant = "pokeassistant.cli:main"
+pokeassistant-api = "pokeassistant.api:run_server"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py310"
 line-length = 100
 
 [tool.pytest.ini_options]
