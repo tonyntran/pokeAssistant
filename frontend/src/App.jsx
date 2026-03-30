@@ -999,11 +999,11 @@ export default function PackMagik(){
         className="hidden md:flex fixed left-0 top-0 h-full flex-col border-r border-gray-900"
         style={{
           background:"#080808",
-          width: sidebarOpen ? "160px" : "48px",
+          width: sidebarOpen ? "180px" : "48px",
           transition:"width 0.22s cubic-bezier(0.4,0,0.2,1)",
           zIndex: 50,
           overflowX:"hidden",
-          overflowY:"auto",
+          overflowY:"hidden",
         }}
         onMouseEnter={openSidebar}
         onMouseLeave={closeSidebar}
@@ -1020,7 +1020,7 @@ export default function PackMagik(){
         </div>
 
         {/* Nav items */}
-        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-hidden">
+        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-hidden min-h-0">
           {NAV_ITEMS.map(({id,label,Icon})=>{
             const active=page===id;
             return(
@@ -1049,7 +1049,7 @@ export default function PackMagik(){
         </nav>
 
         {/* Bottom */}
-        <div className="px-2 pb-8 border-t border-gray-900 pt-4 space-y-3 overflow-hidden">
+        <div className="px-2 pb-5 border-t border-gray-900 pt-3 space-y-2 flex-shrink-0 overflow-hidden">
           <div className="flex items-center gap-2 rounded-lg cursor-pointer hover:bg-gray-900/60 transition-colors"
             style={{padding:"8px 10px"}}>
             <div className="w-6 h-6 rounded bg-gray-700 flex items-center justify-center text-xs text-gray-300 font-medium" style={{flexShrink:0}}>US</div>
@@ -1081,7 +1081,7 @@ export default function PackMagik(){
       </div>
 
       {/* ── Main Content ─────────────────────────────────────────────── */}
-      <div className="flex-1 mb-16 md:mb-0 flex flex-col" style={{marginLeft: "48px"}}>
+      <div className="flex-1 mb-16 md:mb-0 flex flex-col md:ml-12" style={{minWidth: 0}}>
 
         {/* Collection view */}
         {page==="Collection"&&<CollectionView/>}
@@ -1097,7 +1097,7 @@ export default function PackMagik(){
             )}
 
             {/* Hero */}
-            <div className="pt-10 pb-6 text-center px-4 relative z-40">
+            <div className="pt-10 pb-6 text-center px-4 md:px-8 relative z-40">
               <h1 className="text-4xl font-bold text-white mb-2">
                 Discover{" "}
                 <span style={{background:"linear-gradient(90deg,#f59e0b,#ec4899,#a855f7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
@@ -1107,7 +1107,7 @@ export default function PackMagik(){
               <p className="text-gray-500 text-sm mb-6">Search 50,000+ cards with real-time prices and market signals</p>
 
               {/* Search bar */}
-              <div className="relative max-w-2xl mx-auto">
+              <div className="relative max-w-3xl mx-auto">
                 <div className="flex items-center rounded-2xl border px-4 py-2.5 gap-2 transition-all"
                   style={{background:"#0f0f0f",borderColor:showDrop?"#6366f1":"#374151",boxShadow:showDrop?"0 0 0 1px #6366f1,0 0 20px rgba(99,102,241,0.12)":"none",position:"relative",zIndex:50}}>
                   <Search size={16} className="text-gray-500 flex-shrink-0"/>
