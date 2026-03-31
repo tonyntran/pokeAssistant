@@ -42,21 +42,21 @@ const CARDS = [
 
 const PRODUCTS = [
   { id:1,  name:"Mini Tin: Zorua & Cramorant",                 set:"Ascended Heroes",    market:20.74, change:-14.81, pullRate:"Good",
-    img:"https://assets.tcgplayer.com/fit-in/437x437/product/3/3f/3f3e9e0a-89f4-4c09-b3c6-3e6a7e9e1234.jpg" },
+    img:"https://placehold.co/437x437/1a1a2e/a855f7?text=Mini+Tin%0AZorua" },
   { id:2,  name:"Mini Tin: Clefairy & Chikorita",              set:"Ascended Heroes",    market:24.29, change:-5.48,  pullRate:"Good",
-    img:"https://assets.tcgplayer.com/fit-in/437x437/product/3/5c/5c9e0a89-f44c-09b3-c63e-6a7e9e12345a.jpg" },
+    img:"https://placehold.co/437x437/1a2e1a/4ade80?text=Mini+Tin%0AClefairy" },
   { id:3,  name:"Mini Tin: Marill & Togetic",                  set:"Ascended Heroes",    market:18.99, change:-1.09,  pullRate:"Good",
-    img:"https://assets.tcgplayer.com/fit-in/437x437/product/3/8b/8b3e9e0a-89f4-4c09-b3c6-3e6a7e9e9876.jpg" },
+    img:"https://placehold.co/437x437/1a1a2e/60a5fa?text=Mini+Tin%0AMarill" },
   { id:4,  name:"Booster Bundle",                              set:"Ascended Heroes",    market:71.00, change:2.07,   pullRate:"Good",
-    img:"https://product-images.tcgplayer.com/fit-in/437x437/614985.jpg" },
+    img:"https://placehold.co/437x437/0a1a2e/f59e0b?text=Booster%0ABundle" },
   { id:5,  name:"Elite Trainer Box [Pokemon Center]",          set:"Ascended Heroes",    market:341,   change:3.04,   pullRate:"Good",
-    img:"https://product-images.tcgplayer.com/fit-in/437x437/614986.jpg" },
+    img:"https://placehold.co/437x437/2e0a1a/ec4899?text=ETB%0APokemon+Center" },
   { id:6,  name:"Phantasmal Flames Booster Bundle",            set:"Phantasmal Flames",  market:48.93, change:-0.47,  pullRate:"Mid",
-    img:"https://product-images.tcgplayer.com/fit-in/437x437/604827.jpg" },
+    img:"https://placehold.co/437x437/1a0a2e/a855f7?text=Phantasmal%0AFlames" },
   { id:7,  name:"Mega Charizard X Ex Ultra-Premium Collection",set:"Phantasmal Flames",  market:187,   change:40.64,  pullRate:"Good",
-    img:"https://product-images.tcgplayer.com/fit-in/437x437/604826.jpg" },
+    img:"https://placehold.co/437x437/2e1a0a/f97316?text=Charizard%0AUPC" },
   { id:8,  name:"Evolutions ETB [Mega Charizard Y]",           set:"Evolutions",         market:660,   change:89,     pullRate:"Garbage",
-    img:"https://product-images.tcgplayer.com/fit-in/437x437/201246.jpg" },
+    img:"https://placehold.co/437x437/0a0a1a/ef4444?text=Evolutions%0AETB" },
 ];
 
 const PRODUCT_CARDS_INSIDE = [
@@ -407,7 +407,7 @@ function MarketSentiment({ card }) {
   const [expanded, setExpanded] = useState(false);
   const s = SENTIMENT_DATA;
   const arc = (v) => {
-    const r=44, cx=60, cy=60, start=-Math.PI*0.75, end=start+(v/100)*Math.PI*1.5;
+    const r=36, cx=60, cy=48, start=-Math.PI*0.75, end=start+(v/100)*Math.PI*1.5;
     const x1=cx+r*Math.cos(start), y1=cy+r*Math.sin(start);
     const x2=cx+r*Math.cos(end),   y2=cy+r*Math.sin(end);
     const large=v>66?1:0;
@@ -415,7 +415,7 @@ function MarketSentiment({ card }) {
   };
   const needleAngle = -135 + (s.score/100)*270;
   const needleRad = (needleAngle*Math.PI)/180;
-  const nx = 60 + 34*Math.cos(needleRad), ny = 60 + 34*Math.sin(needleRad);
+  const nx = 60 + 28*Math.cos(needleRad), ny = 48 + 28*Math.sin(needleRad);
 
   return (
     <div className="rounded-xl border border-gray-800 mb-3 overflow-hidden" style={{background:"#0f0f0f"}}>
@@ -449,11 +449,11 @@ function MarketSentiment({ card }) {
               <path d={arc(s.score)} fill="none" strokeWidth="8" strokeLinecap="round"
                 stroke={s.score>65?"#4ade80":s.score>40?"#eab308":"#f87171"}/>
               {/* Needle */}
-              <line x1="60" y1="60" x2={nx} y2={ny} stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <circle cx="60" cy="60" r="3.5" fill="white"/>
+              <line x1="60" y1="48" x2={nx} y2={ny} stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="60" cy="48" r="3.5" fill="white"/>
               {/* Score text */}
-              <text x="60" y="56" textAnchor="middle" fontSize="15" fontWeight="700" fill="white">{s.score}</text>
-              <text x="60" y="68" textAnchor="middle" fontSize="8" fill="#6b7280">/ 100</text>
+              <text x="60" y="45" textAnchor="middle" fontSize="14" fontWeight="700" fill="white">{s.score}</text>
+              <text x="60" y="57" textAnchor="middle" fontSize="8" fill="#6b7280">/ 100</text>
             </svg>
             <div className="flex justify-between text-xs text-gray-600 mt-0.5" style={{width:120}}>
               <span>Bear</span><span>Bull</span>
@@ -945,6 +945,39 @@ function ProductGrid({products,onProductClick}){
   );
 }
 
+// ─── Sets Data & Grid ─────────────────────────────────────────────────────────
+
+const SETS_DATA = [
+  { name:"Ascended Heroes",      cards:217, released:"Mar 2026", logo:"https://images.pokemontcg.io/sv8/logo.png" },
+  { name:"Destined Rivals",      cards:196, released:"Jan 2026", logo:"https://images.pokemontcg.io/sv9/logo.png" },
+  { name:"Prismatic Evolutions", cards:165, released:"Jan 2025", logo:"https://images.pokemontcg.io/sv8pt5/logo.png" },
+  { name:"Phantasmal Flames",    cards:94,  released:"Aug 2025", logo:"https://images.pokemontcg.io/sv6/logo.png" },
+  { name:"Surging Sparks",       cards:191, released:"Nov 2024", logo:"https://images.pokemontcg.io/sv8/logo.png" },
+  { name:"Stellar Crown",        cards:175, released:"Sep 2024", logo:"https://images.pokemontcg.io/sv7/logo.png" },
+];
+
+function SetsGrid(){
+  return(
+    <div className="grid gap-3" style={{gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))"}}>
+      {SETS_DATA.map((s,i)=>(
+        <div key={i} className="rounded-xl border border-gray-800 overflow-hidden cursor-pointer hover:border-gray-600 hover:scale-[1.01] transition-all duration-200"
+          style={{background:"#111"}}>
+          <div className="h-24 flex items-center justify-center" style={{background:"linear-gradient(135deg,#0f0f1a,#1a0a2e)"}}>
+            <img src={s.logo} alt={s.name} className="h-12 object-contain" onError={e=>{e.target.src=`https://placehold.co/200x48/0a0a1a/6366f1?text=${encodeURIComponent(s.name)}`}}/>
+          </div>
+          <div className="p-3">
+            <div className="text-white text-sm font-semibold">{s.name}</div>
+            <div className="flex items-center justify-between mt-1.5">
+              <span className="text-gray-500 text-xs">{s.cards} cards</span>
+              <span className="text-gray-500 text-xs">{s.released}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS=[
@@ -971,6 +1004,7 @@ export default function PackMagik(){
   const closeSidebar = () => { sidebarTimer.current = setTimeout(() => setSidebarOpen(false), 80); };
 
   const isProducts=activeNav==="Products";
+  const isSets=activeNav==="Sets";
   const suggestions = query.length>1 ? (isProducts?SEARCH_SUGGESTIONS_PRODUCTS:SEARCH_SUGGESTIONS_CARDS) : [];
   const showDrop    = showSugg && suggestions.length>0;
 
@@ -988,8 +1022,8 @@ export default function PackMagik(){
   const primaryNavItems=["Cards","Sets","Products","Listings"];
 
   const sortLabel=isProducts?"Release":"Market";
-  const placeholderText=isProducts?`Search "Rayquaza"...`:`Search "Pikachu"...`;
-  const discoverTitle=isProducts?"Products":"Cards";
+  const placeholderText=isProducts?`Search "Rayquaza"...`:isSets?`Search "Prismatic Evolutions"...`:`Search "Pikachu"...`;
+  const discoverTitle=isProducts?"Products":isSets?"Sets":"Cards";
 
   return(
     <div className="flex min-h-screen" style={{background:"#000",fontFamily:"system-ui,-apple-system,sans-serif"}}>
@@ -1025,9 +1059,9 @@ export default function PackMagik(){
             const active=page===id;
             return(
               <button key={id} onClick={()=>setPage(id)}
-                className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium transition-colors ${active?"text-white bg-gray-800":"text-gray-500 hover:text-gray-300 hover:bg-gray-900/60"}`}
+                className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium transition-colors ${active?"text-white bg-gray-800/80 shadow-sm":"text-gray-500 hover:text-gray-300 hover:bg-gray-900/60"}`}
                 style={{padding:"10px", minWidth:0, justifyContent:"flex-start"}}>
-                <Icon size={16} style={{flexShrink:0}}/>
+                <Icon size={16} style={{flexShrink:0, opacity: active ? 1 : 0.6}}/>
                 <span className="whitespace-nowrap overflow-hidden"
                   style={{opacity:sidebarOpen?1:0, transition:"opacity 0.12s ease", maxWidth:sidebarOpen?"120px":"0px"}}>
                   {label}
@@ -1097,10 +1131,10 @@ export default function PackMagik(){
             )}
 
             {/* Hero */}
-            <div className="pt-10 pb-6 text-center px-4 md:px-8 relative z-40">
+            <div className="pt-10 pb-6 text-center px-4 md:px-8 relative z-40" style={{marginLeft:"-24px"}}>
               <h1 className="text-4xl font-bold text-white mb-2">
                 Discover{" "}
-                <span style={{background:"linear-gradient(90deg,#f59e0b,#ec4899,#a855f7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
+                <span style={{background:"linear-gradient(90deg,#f59e0b,#ec4899,#a855f7)",WebkitBackgroundClip:"text",backgroundClip:"text",WebkitTextFillColor:"transparent",color:"transparent"}}>
                   {discoverTitle}
                 </span>
               </h1>
@@ -1108,8 +1142,10 @@ export default function PackMagik(){
 
               {/* Search bar */}
               <div className="relative max-w-3xl mx-auto">
-                <div className="flex items-center rounded-2xl border px-4 py-2.5 gap-2 transition-all"
-                  style={{background:"#0f0f0f",borderColor:showDrop?"#6366f1":"#374151",boxShadow:showDrop?"0 0 0 1px #6366f1,0 0 20px rgba(99,102,241,0.12)":"none",position:"relative",zIndex:50}}>
+                <div className="rounded-2xl p-[1px] transition-all"
+                  style={{background:showDrop?"linear-gradient(135deg,#6366f1,#ec4899,#06b6d4)":"linear-gradient(135deg,#374151,#6366f1,#ec4899,#06b6d4,#374151)",boxShadow:showDrop?"0 0 20px rgba(99,102,241,0.2)":"none",position:"relative",zIndex:50}}>
+                <div className="flex items-center rounded-2xl px-4 py-2.5 gap-2"
+                  style={{background:"#0f0f0f"}}>
                   <Search size={16} className="text-gray-500 flex-shrink-0"/>
                   <input type="text" value={query}
                     onChange={e=>{setQuery(e.target.value);setShowSugg(true);}}
@@ -1121,6 +1157,7 @@ export default function PackMagik(){
                   <button className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl text-white border border-gray-700 bg-transparent hover:bg-gray-800 transition-colors">
                     <Zap size={12} className="text-gray-400"/> Scan
                   </button>
+                </div>
                 </div>
 
                 {/* Dropdown */}
@@ -1196,6 +1233,8 @@ export default function PackMagik(){
             <div className="pb-12 px-4 md:px-8">
               {isProducts
                 ? <ProductGrid products={PRODUCTS} onProductClick={setSelProd}/>
+                : isSets
+                ? <SetsGrid/>
                 : <CardGrid cards={CARDS} onCardClick={setSelCard}/>
               }
             </div>
