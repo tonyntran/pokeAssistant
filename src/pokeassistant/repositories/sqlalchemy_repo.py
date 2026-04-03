@@ -236,3 +236,19 @@ class SQLAlchemyRepository(CardRepository):
             q = q.filter(Product.product_type == "sealed")
 
         return q.limit(20).all()
+
+    def find_by_name_and_number(self, name: str, card_number: str) -> list[Product]:
+        """Find products matching both name (case-insensitive) and card_number exactly.
+
+        Used by PokemonAdapter.lookup_by_text() for OCR-based card identification.
+        Does NOT use search() — that method has a hardcoded .limit(20) which would
+        silently drop results for common names like 'Pikachu' across many sets.
+        """
+        return (
+            self.session.query(Product)
+            .filter(
+                Product.name.ilike(f"%{name}%"),
+                Product.card_number == card_number,
+            )
+            .all()
+        )
