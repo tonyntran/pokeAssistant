@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 
 @dataclass
@@ -12,7 +12,7 @@ class CardRecord:
     name: str
     set_name: str
     image_url: str
-    metadata: dict = field(default_factory=dict)  # card_number, rarity, etc.
+    metadata: dict[str, Any] = field(default_factory=dict)  # card_number, rarity, etc.
 
 
 @dataclass
@@ -34,6 +34,6 @@ class ScanResult:
 @dataclass
 class OCRExtract:
     """Raw text extracted from a card image by CardOCR."""
-    name: str | None
-    set_number: str | None    # e.g. "4/102"
-    confidence: float         # 0.0–1.0; EasyOCR average word confidence
+    name: str | None = None
+    set_number: str | None = None    # e.g. "4/102"
+    confidence: float = 0.0          # 0.0–1.0; EasyOCR average word confidence
