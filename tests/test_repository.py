@@ -398,38 +398,44 @@ def sample_product(session):
 # Tests for find_by_name_and_number
 # ---------------------------------------------------------------------------
 
-def test_find_by_name_and_number_returns_exact_match(session, sample_product):
-    """find_by_name_and_number returns products matching both name and card_number."""
-    repo = SQLAlchemyRepository(session)
-    results = repo.find_by_name_and_number("Charizard", "4/102")
-    assert len(results) == 1
-    assert results[0].name == "Charizard"
-    assert results[0].card_number == "4/102"
+class TestFindByNameAndNumber:
+    def test_returns_exact_match(self, session, sample_product):
+        """find_by_name_and_number returns products matching both name and card_number."""
+        repo = SQLAlchemyRepository(session)
+        results = repo.find_by_name_and_number("Charizard", "4/102")
+        assert len(results) == 1
+        assert results[0].name == "Charizard"
+        assert results[0].card_number == "4/102"
 
+    def test_returns_empty_when_no_match(self, session):
+        """find_by_name_and_number returns empty list when no card matches."""
+        repo = SQLAlchemyRepository(session)
+        results = repo.find_by_name_and_number("Nonexistent", "999/999")
+        assert results == []
 
-def test_find_by_name_and_number_returns_empty_when_no_match(session):
-    """find_by_name_and_number returns empty list when no card matches."""
-    repo = SQLAlchemyRepository(session)
-    results = repo.find_by_name_and_number("Nonexistent", "999/999")
-    assert results == []
+    def test_returns_multiple_when_ambiguous(self, session):
+        """find_by_name_and_number returns all matches for same name+number (e.g. Shadowless)."""
+        repo = SQLAlchemyRepository(session)
+        # Add two Charizards with the same card_number but different product_ids
+        session.add(Product(
+            product_id=12345,
+            name="Charizard",
+            card_number="4/102",
+            group_name="Base Set",
+        ))
+        session.add(Product(
+            product_id=99999,
+            name="Charizard",
+            card_number="4/102",
+            group_name="Base Set Shadowless",
+        ))
+        session.commit()
+        results = repo.find_by_name_and_number("Charizard", "4/102")
+        assert len(results) == 2
 
-
-def test_find_by_name_and_number_returns_multiple_when_ambiguous(session):
-    """find_by_name_and_number returns all matches for same name+number (e.g. Shadowless)."""
-    repo = SQLAlchemyRepository(session)
-    # Add two Charizards with the same card_number but different product_ids
-    session.add(Product(
-        product_id=12345,
-        name="Charizard",
-        card_number="4/102",
-        group_name="Base Set",
-    ))
-    session.add(Product(
-        product_id=99999,
-        name="Charizard",
-        card_number="4/102",
-        group_name="Base Set Shadowless",
-    ))
-    session.commit()
-    results = repo.find_by_name_and_number("Charizard", "4/102")
-    assert len(results) == 2
+    def test_is_case_insensitive(self, session, sample_product):
+        """Name matching should be case-insensitive per docstring contract."""
+        repo = SQLAlchemyRepository(session)
+        results = repo.find_by_name_and_number("charizard", "4/102")  # lowercase
+        assert len(results) == 1
+        assert results[0].name == "Charizard"
