@@ -18,7 +18,10 @@ _NAME_REGION_TOP = 0.0
 _NAME_REGION_BOTTOM = 0.15
 _NUMBER_REGION_TOP = 0.85
 _NUMBER_REGION_BOTTOM = 1.0
-_NUMBER_REGION_LEFT = 0.5
+_NUMBER_REGION_LEFT = 0.0   # scan full width; OCR regex finds the pattern wherever it is
+
+# Minimum contour area to be considered a card candidate
+_MIN_CARD_AREA_PX2 = 5_000   # ~71×71px minimum; rejects noise contours below card size
 
 
 class CardDetector:
@@ -52,10 +55,24 @@ class CardDetector:
 
         card_corners = None
         for cnt in contours[:10]:
-            peri = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
-            if len(approx) == 4 and cv2.contourArea(cnt) > 5000:
+            # Use bounding-rect area for size check: contourArea is unreliable
+            # for edge-traced (ring) contours where the enclosed area is ~0.
+            _, _, bw, bh = cv2.boundingRect(cnt)
+            if bw * bh <= _MIN_CARD_AREA_PX2:
+                continue
+            # Simplify via convex hull before polygon approximation so that
+            # jagged edge pixels from anti-aliased/thick borders collapse cleanly.
+            hull = cv2.convexHull(cnt)
+            peri = cv2.arcLength(hull, True)
+            approx = cv2.approxPolyDP(hull, 0.02 * peri, True)
+            if len(approx) == 4:
                 card_corners = approx.reshape(4, 2).astype("float32")
+                break
+            # Rotated cards may still produce 5–8 hull points; fall back to
+            # the minimum bounding rectangle which always gives exactly 4 corners.
+            if 4 < len(approx) <= 8:
+                rect = cv2.minAreaRect(hull)
+                card_corners = cv2.boxPoints(rect).astype("float32")
                 break
 
         if card_corners is None:
@@ -89,12 +106,17 @@ class CardDetector:
 
 
 def _order_corners(pts: np.ndarray) -> np.ndarray:
-    """Order corners as: top-left, top-right, bottom-right, bottom-left."""
-    rect = np.zeros((4, 2), dtype="float32")
-    s = pts.sum(axis=1)
-    rect[0] = pts[np.argmin(s)]
-    rect[2] = pts[np.argmax(s)]
-    diff = np.diff(pts, axis=1)
-    rect[1] = pts[np.argmin(diff)]
-    rect[3] = pts[np.argmax(diff)]
-    return rect
+    """Order corners as: top-left, top-right, bottom-right, bottom-left.
+
+    Uses centroid angles rather than sum/diff to handle all rotation angles
+    correctly (the sum/diff method breaks at exactly 45°).
+    """
+    center = pts.mean(axis=0)
+    angles = np.arctan2(pts[:, 1] - center[1], pts[:, 0] - center[0])
+    # Sort CCW starting from rightmost point
+    order = np.argsort(angles)
+    pts_ccw = pts[order]
+    # Rotate so top-left (minimum x+y) is first
+    s = pts_ccw.sum(axis=1)
+    start = int(np.argmin(s))
+    return np.roll(pts_ccw, -start, axis=0)

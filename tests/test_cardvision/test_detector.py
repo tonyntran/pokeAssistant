@@ -12,7 +12,9 @@ def make_card_image(tmp_path: Path, angled: bool = False) -> Path:
     draw = ImageDraw.Draw(img)
     # Draw a white card-shaped rectangle with a clear border
     draw.rectangle([150, 100, 550, 660], fill=(255, 255, 255), outline=(0, 0, 0), width=3)
-    path = tmp_path / ("angled_card.jpg" if angled else "clean_card.jpg")
+    if angled:
+        img = img.rotate(20, expand=False, fillcolor=(80, 80, 80))
+    path = tmp_path / ("angled_card.png" if angled else "clean_card.png")
     img.save(path)
     return path
 
@@ -44,15 +46,15 @@ def test_crop_name_region_returns_top_strip(tmp_path):
     assert region_w == card_w
 
 
-def test_crop_number_region_returns_bottom_right(tmp_path):
+def test_crop_number_region_returns_bottom_strip(tmp_path):
     detector = CardDetector()
     card_path = make_card_image(tmp_path)
     card = detector.detect_and_warp(card_path)
     number_region = detector.crop_number_region(card)
     card_w, card_h = card.size
     region_w, region_h = number_region.size
-    # Number region should be bottom-right quarter
-    assert region_w < card_w * 0.6
+    # Number region should be full-width bottom strip (~15% of height)
+    assert region_w == card_w
     assert region_h < card_h * 0.25
 
 
@@ -72,6 +74,14 @@ def test_raises_card_not_detected_on_blank_image(tmp_path):
     blank.save(path)
     with pytest.raises(CardNotDetectedError):
         detector.detect_and_warp(path)
+
+
+def test_detect_and_warp_handles_slightly_angled_card(tmp_path):
+    """Detector should handle cards rotated ~20 degrees."""
+    detector = CardDetector()
+    card_path = make_card_image(tmp_path, angled=True)
+    result = detector.detect_and_warp(card_path)
+    assert isinstance(result, Image.Image)
 
 
 def test_warped_card_is_exactly_400x560(tmp_path):
