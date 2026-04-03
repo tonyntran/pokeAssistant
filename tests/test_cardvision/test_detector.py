@@ -62,3 +62,22 @@ def test_raises_image_load_error_on_bad_file(tmp_path):
     bad_path.write_text("this is not an image")
     with pytest.raises(ImageLoadError):
         detector.detect_and_warp(bad_path)
+
+
+def test_raises_card_not_detected_on_blank_image(tmp_path):
+    """A featureless image with no rectangle raises CardNotDetectedError."""
+    detector = CardDetector()
+    blank = Image.new("RGB", (200, 200), color=(128, 128, 128))
+    path = tmp_path / "blank.png"
+    blank.save(path)
+    with pytest.raises(CardNotDetectedError):
+        detector.detect_and_warp(path)
+
+
+def test_warped_card_is_exactly_400x560(tmp_path):
+    """detect_and_warp always outputs exactly _WARP_WIDTH x _WARP_HEIGHT."""
+    from cardvision.detector import _WARP_WIDTH, _WARP_HEIGHT
+    detector = CardDetector()
+    card_path = make_card_image(tmp_path)
+    result = detector.detect_and_warp(card_path)
+    assert result.size == (_WARP_WIDTH, _WARP_HEIGHT)
