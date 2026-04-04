@@ -19,3 +19,7 @@ class EmptyCatalogError(CardVisionError):
 
 class ImageLoadError(CardVisionError):
     """Raised when Pillow cannot open or read the provided image file."""
+
+
+class OCRError(CardVisionError):
+    """Raised when EasyOCR fails to process a region."""

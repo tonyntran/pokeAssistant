@@ -1,13 +1,32 @@
-"""Integration tests for CardOCR — requires EasyOCR model download (~150MB).
+"""Tests for CardOCR.
 
-Run with: pytest tests/test_cardvision/test_ocr.py -m integration -v
+Unit tests (regex) run without any model download.
+Integration tests require EasyOCR model download (~150MB):
+    pytest tests/test_cardvision/test_ocr.py -m integration -v
 """
 import pytest
 from PIL import Image, ImageDraw, ImageFont
 
-from cardvision.ocr import CardOCR
+from cardvision.ocr import CardOCR, _SET_NUMBER_RE
 from cardvision.result import OCRExtract
 from cardvision.detector import CardDetector
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — no EasyOCR, no model download
+# ---------------------------------------------------------------------------
+
+def test_set_number_regex_matches_standard_formats():
+    assert _SET_NUMBER_RE.fullmatch("4/102")
+    assert _SET_NUMBER_RE.fullmatch("025/198")
+    assert _SET_NUMBER_RE.fullmatch("SV001/SV122")
+    assert _SET_NUMBER_RE.fullmatch("TG01/TG30")
+
+
+def test_set_number_regex_rejects_noise():
+    assert not _SET_NUMBER_RE.fullmatch("Pikachu")
+    assert not _SET_NUMBER_RE.fullmatch("1995/2023")   # copyright year — too many digits
+    assert not _SET_NUMBER_RE.fullmatch("HP120")
 
 
 @pytest.mark.integration

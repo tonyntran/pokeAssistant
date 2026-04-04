@@ -8,10 +8,14 @@ import numpy as np
 from PIL import Image
 
 from cardvision.detector import CardDetector
+from cardvision.exceptions import OCRError
 from cardvision.result import OCRExtract
 
-# Pattern to match set numbers like "4/102", "025/198", "SV001/SV122"
-_SET_NUMBER_RE = re.compile(r"\d+\s*/\s*\d+|[A-Z]{2,}\d+\s*/\s*[A-Z]{2,}\d+")
+# Matches real TCG set numbers: "4/102", "025/198", "SV001/SV122", "TG01/TG30"
+_SET_NUMBER_RE = re.compile(
+    r"\d{1,3}/\d{1,3}"                              # Numeric: 4/102, 025/198
+    r"|[A-Z]{2,3}\d{2,3}/[A-Z]{2,3}\d{2,3}"        # Alpha: SV001/SV122, TG01/TG30
+)
 
 
 class CardOCR:
@@ -22,9 +26,9 @@ class CardOCR:
     logic is re-implemented here.
     """
 
-    def __init__(self, languages: list[str] | None = None) -> None:
+    def __init__(self, languages: list[str] | None = None, detector: CardDetector | None = None) -> None:
         self._languages = languages or ["en"]
-        self._detector = CardDetector()
+        self._detector = detector if detector is not None else CardDetector()
 
     @cached_property
     def _reader(self):
@@ -56,7 +60,10 @@ class CardOCR:
 
     def _read_name(self, region: Image.Image) -> tuple[str | None, float | None]:
         arr = np.array(region.convert("RGB"))
-        results = self._reader.readtext(arr, detail=1)
+        try:
+            results = self._reader.readtext(arr, detail=1)
+        except Exception as exc:
+            raise OCRError("EasyOCR readtext failed on name region") from exc
         if not results:
             return None, None
         # Pick the highest-confidence text in the name region
@@ -69,9 +76,15 @@ class CardOCR:
 
     def _read_set_number(self, region: Image.Image) -> tuple[str | None, float | None]:
         arr = np.array(region.convert("RGB"))
-        results = self._reader.readtext(arr, detail=1)
-        for _bbox, text, conf in results:
-            clean = text.strip().replace(" ", "")
-            if _SET_NUMBER_RE.fullmatch(clean):
-                return clean, float(conf)
+        try:
+            results = self._reader.readtext(arr, detail=1)
+        except Exception as exc:
+            raise OCRError("EasyOCR readtext failed on set number region") from exc
+        matches = [
+            (text.strip().replace(" ", ""), float(conf))
+            for _bbox, text, conf in results
+            if _SET_NUMBER_RE.fullmatch(text.strip().replace(" ", ""))
+        ]
+        if matches:
+            return max(matches, key=lambda x: x[1])
         return None, None
