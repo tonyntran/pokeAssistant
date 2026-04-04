@@ -2,17 +2,18 @@
 from __future__ import annotations
 
 import json
-import time
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import faiss
 import numpy as np
-from tqdm import tqdm
 
 from cardvision.exceptions import EmptyCatalogError, IndexNotBuiltError
 from cardvision.result import CardRecord
+
+_log = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from cardvision.embedder import CardEmbedder
@@ -55,6 +56,7 @@ class CardIndex:
         import time as _time
         from PIL import Image
         import io
+        from tqdm import tqdm
 
         if not catalog:
             raise EmptyCatalogError(
@@ -80,7 +82,7 @@ class CardIndex:
                     if attempt < max_retries - 1:
                         _time.sleep(wait)
                     else:
-                        print(f"\n  ⚠ Skipping {card.name!r}: {exc}")
+                        _log.warning("Skipping %r after %d attempts: %s", card.name, max_retries, exc)
                         skipped += 1
             if vec is not None:
                 embeddings.append(vec)
@@ -113,6 +115,11 @@ class CardIndex:
         """
         if not catalog:
             raise EmptyCatalogError("Cannot build index from empty catalog.")
+
+        if len(catalog) != embeddings.shape[0]:
+            raise ValueError(
+                f"Catalog length ({len(catalog)}) must match embeddings row count ({embeddings.shape[0]})."
+            )
 
         dim = embeddings.shape[1]
         index = faiss.IndexFlatIP(dim)   # cosine similarity via inner product on normalized vecs

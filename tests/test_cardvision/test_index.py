@@ -6,7 +6,7 @@ from pathlib import Path
 
 from cardvision.index import CardIndex
 from cardvision.result import CardRecord
-from cardvision.exceptions import IndexNotBuiltError
+from cardvision.exceptions import EmptyCatalogError, IndexNotBuiltError
 
 
 FAKE_CARDS = [
@@ -70,6 +70,22 @@ def test_load_raises_index_not_built_error(tmp_path):
         index.load(tmp_path / "missing.index", tmp_path / "missing.json")
 
 
+def test_query_raises_when_index_not_loaded():
+    index = CardIndex()
+    vec = make_fake_embeddings(1)[0]
+    with pytest.raises(IndexNotBuiltError):
+        index.query(vec, top_k=1)
+
+
+def test_build_from_embeddings_raises_on_empty_catalog(tmp_path):
+    index = CardIndex()
+    with pytest.raises(EmptyCatalogError):
+        index.build_from_embeddings(
+            [], np.empty((0, 384), dtype="float32"),
+            tmp_path / "x.index", tmp_path / "x.json"
+        )
+
+
 def test_metadata_persisted_correctly(tmp_path):
     embeddings = make_fake_embeddings(3)
     index = CardIndex()
@@ -82,3 +98,19 @@ def test_metadata_persisted_correctly(tmp_path):
     results = index.query(embeddings[1], top_k=1)
     assert results[0][0].name == "Pikachu"
     assert results[0][0].metadata["card_number"] == "58/102"
+
+
+def test_query_raises_when_index_not_loaded():
+    index = CardIndex()
+    vec = make_fake_embeddings(1)[0]
+    with pytest.raises(IndexNotBuiltError):
+        index.query(vec, top_k=1)
+
+
+def test_build_from_embeddings_raises_on_empty_catalog(tmp_path):
+    index = CardIndex()
+    with pytest.raises(EmptyCatalogError):
+        index.build_from_embeddings(
+            [], np.empty((0, 384), dtype="float32"),
+            tmp_path / "x.index", tmp_path / "x.json"
+        )
