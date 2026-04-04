@@ -45,7 +45,7 @@ class CardEmbedder:
             image = Image.open(image).convert("RGB")
         tensor = _TRANSFORM(image).unsqueeze(0)
         with torch.no_grad():
-            vec = self._get_model()(tensor).squeeze(0).numpy().astype(np.float32)
+            vec = self._get_model()(tensor).squeeze(0).cpu().numpy().astype(np.float32)
         norm = np.linalg.norm(vec)
         if norm > 0:
             vec = vec / norm
@@ -61,6 +61,8 @@ class CardEmbedder:
         Returns:
             np.ndarray of shape (N, 384), dtype float32, each row L2-normalized.
         """
+        if not images:
+            return np.empty((0, _EMBEDDING_DIM), dtype=np.float32)
         all_vecs: list[np.ndarray] = []
         for i in range(0, len(images), batch_size):
             batch_paths = images[i : i + batch_size]
@@ -68,7 +70,7 @@ class CardEmbedder:
                 _TRANSFORM(Image.open(p).convert("RGB")) for p in batch_paths
             ])
             with torch.no_grad():
-                vecs = self._get_model()(tensors).numpy().astype(np.float32)
+                vecs = self._get_model()(tensors).cpu().numpy().astype(np.float32)
             norms = np.linalg.norm(vecs, axis=1, keepdims=True)
             norms = np.where(norms == 0, 1.0, norms)
             all_vecs.append(vecs / norms)

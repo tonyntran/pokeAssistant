@@ -60,6 +60,16 @@ def test_embed_batch_returns_correct_shape(tmp_path):
     embedder = CardEmbedder()
     batch = embedder.embed_batch(paths)
     assert batch.shape == (3, 384)
+    assert batch.dtype == np.float32
     # Each row should be L2-normalized
     norms = np.linalg.norm(batch, axis=1)
     assert np.allclose(norms, 1.0, atol=1e-5)
+
+
+@pytest.mark.integration
+def test_embed_accepts_pil_image():
+    img = Image.new("RGB", (400, 560), color=(80, 120, 160))
+    embedder = CardEmbedder()
+    vec = embedder.embed(img)
+    assert vec.shape == (384,)
+    assert vec.dtype == np.float32
