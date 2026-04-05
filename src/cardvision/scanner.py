@@ -26,9 +26,9 @@ class CardScanner:
     Usage::
 
         # One-time setup (downloads ~85MB DINOv2 model + card images):
-        CardScanner.build_index(adapter)
-
         adapter = PokemonAdapter()
+        CardScanner.build_index(adapter)   # one-time setup
+
         scanner = CardScanner(adapter)
         result = scanner.scan(Path("card.jpg"))
 
