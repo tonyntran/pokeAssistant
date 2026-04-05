@@ -4,11 +4,24 @@ import argparse
 import asyncio
 import sys
 from datetime import datetime
+from pathlib import Path
 
 from pokeassistant.config import get_db_path
 from pokeassistant.database import get_engine, get_session_factory
 from pokeassistant.repositories import SQLAlchemyRepository
 from pokeassistant.models import Product
+
+# Optional vision dependencies — imported at module level so tests can patch them.
+# These will be None if the vision extras are not installed.
+try:
+    from cardvision.scanner import CardScanner, EMBEDDING_WARN_THRESHOLD
+    from cardvision.exceptions import IndexNotBuiltError
+    from pokeassistant.vision import PokemonAdapter
+except ImportError:
+    CardScanner = None  # type: ignore[assignment,misc]
+    EMBEDDING_WARN_THRESHOLD = None  # type: ignore[assignment]
+    IndexNotBuiltError = None  # type: ignore[assignment,misc]
+    PokemonAdapter = None  # type: ignore[assignment,misc]
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -16,72 +29,117 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         prog="pokeassistant",
         description="Pokemon TCG price tracking and analysis tool",
     )
-    parser.add_argument(
-        "--product-id",
-        type=int,
-        required=True,
-        help="TCGPlayer product ID to track",
-    )
-    parser.add_argument(
-        "--group-id",
-        type=int,
-        default=None,
-        help="TCGPlayer group/set ID (required for --tcgcsv)",
-    )
-    parser.add_argument(
-        "--scrape",
-        action="store_true",
-        help="Scrape TCGPlayer product page via Playwright",
-    )
-    parser.add_argument(
-        "--tcgcsv",
-        action="store_true",
-        help="Fetch prices from TCGCSV (no browser needed)",
-    )
-    parser.add_argument(
-        "--trends",
-        action="store_true",
-        help="Fetch Google Trends data",
-    )
-    parser.add_argument(
-        "--pricecharting",
-        action="store_true",
-        help="Fetch graded card prices from PriceCharting",
-    )
-    parser.add_argument(
-        "--gemrate",
-        action="store_true",
-        help="Fetch grading population data from GemRate",
-    )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Run all data sources",
-    )
-    parser.add_argument(
-        "--card-name",
-        type=str,
-        default=None,
-        help="Card name for PriceCharting/GemRate search (e.g. 'umbreon ex 161 prismatic evolutions')",
-    )
-    parser.add_argument(
-        "--no-headless",
-        action="store_true",
-        help="Run browser in headed mode (visible)",
-    )
-    parser.add_argument(
-        "--keyword",
-        action="append",
-        default=[],
-        help="Google Trends keyword (can be specified multiple times)",
-    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    _build_track_parser(subparsers)
+    _build_scan_parser(subparsers)
 
     return parser.parse_args(argv)
+
+
+def _build_track_parser(subparsers) -> None:
+    p = subparsers.add_parser("track", help="Scrape and track prices for a product")
+    p.add_argument("--product-id", type=int, required=True, help="TCGPlayer product ID to track")
+    p.add_argument("--group-id", type=int, default=None, help="TCGPlayer group/set ID (required for --tcgcsv)")
+    p.add_argument("--scrape", action="store_true", help="Scrape TCGPlayer product page via Playwright")
+    p.add_argument("--tcgcsv", action="store_true", help="Fetch prices from TCGCSV (no browser needed)")
+    p.add_argument("--trends", action="store_true", help="Fetch Google Trends data")
+    p.add_argument("--pricecharting", action="store_true", help="Fetch graded card prices from PriceCharting")
+    p.add_argument("--gemrate", action="store_true", help="Fetch grading population data from GemRate")
+    p.add_argument("--all", action="store_true", help="Run all data sources")
+    p.add_argument("--card-name", type=str, default=None, help="Card name for PriceCharting/GemRate search")
+    p.add_argument("--no-headless", action="store_true", help="Run browser in headed mode (visible)")
+    p.add_argument("--keyword", action="append", default=[], help="Google Trends keyword (can be specified multiple times)")
+
+
+def _build_scan_parser(subparsers) -> None:
+    p = subparsers.add_parser("scan", help="Identify a card from an image")
+    group = p.add_mutually_exclusive_group(required=True)
+    group.add_argument("--image", type=str, metavar="PATH", help="Path to card image")
+    group.add_argument("--build-index", action="store_true", help="Build FAISS index from DB")
+    p.add_argument("--top", type=int, default=3, help="Number of matches to show (default: 3)")
 
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
 
+    if args.command == "track":
+        run_track(args)
+    elif args.command == "scan":
+        run_scan(args)
+
+
+def run_scan(args: argparse.Namespace) -> None:
+    """Handle the scan subcommand."""
+    if CardScanner is None or PokemonAdapter is None:
+        print("Vision dependencies not installed.", file=sys.stderr)
+        print("Run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu", file=sys.stderr)
+        print("Then: pip install 'pokeassistant[vision]'", file=sys.stderr)
+        sys.exit(1)
+
+    adapter = PokemonAdapter()
+
+    if args.build_index:
+        _run_build_index(CardScanner, adapter)
+        return
+
+    # First-run: check for missing index and offer to build
+    idx_path, _ = adapter.get_index_paths()
+    if not idx_path.exists():
+        print("No card index found.")
+        answer = input("Build it now? Downloads DINOv2 model (~85MB) + card images (~5 min). [y/N] ")
+        if answer.strip().lower() == "y":
+            _run_build_index(CardScanner, adapter)
+        else:
+            print("Run: pokeassistant scan --build-index")
+            sys.exit(0)
+
+    scanner = CardScanner(adapter)
+    result = scanner.scan(Path(args.image), top_k=args.top)
+
+    # Look up market price from DB using card_id (product_id for Pokemon)
+    market_cents = _get_market_price(int(result.top.card.card_id))
+    _print_result(result, EMBEDDING_WARN_THRESHOLD, market_cents)
+
+
+def _run_build_index(CardScanner, adapter) -> None:
+    report = CardScanner.build_index(adapter)
+    print(f"\nIndex built: {report.embedded}/{report.total} cards embedded "
+          f"({report.skipped} skipped) in {report.duration_seconds:.0f}s")
+
+
+def _get_market_price(product_id: int) -> int | None:
+    """Look up latest market price in cents for a product_id. Returns None if unavailable."""
+    from pokeassistant.database import get_engine, get_session_factory
+    from pokeassistant.repositories.sqlalchemy_repo import SQLAlchemyRepository
+    session = get_session_factory()()
+    try:
+        repo = SQLAlchemyRepository(session)
+        card = repo.get_card(product_id)
+        if card and card.price_snapshots:
+            return card.price_snapshots[-1].market_price_cents
+        return None
+    except Exception:
+        return None  # price display is optional — never crash a successful scan
+    finally:
+        session.close()
+
+
+def _print_result(result, warn_threshold: float, market_cents: int | None = None) -> None:
+    top = result.top
+    warn = " ⚠ low confidence" if top.confidence < warn_threshold else ""
+    price_str = f"  market: ${market_cents / 100:.2f}\n" if market_cents else ""
+    print(f"\n✓ {top.card.name} — {top.card.set_name} ({top.card.metadata.get('card_number', '?')})")
+    print(f"  match:  {top.confidence:.0%} via {top.method}{warn}")
+    print(f"{price_str}  time:   {result.scan_ms:.0f}ms")
+    if result.alternatives:
+        print("  alternatives:")
+        for alt in result.alternatives:
+            print(f"    · {alt.card.name} {alt.card.set_name}  {alt.confidence:.0%}")
+
+
+def run_track(args: argparse.Namespace) -> None:
+    """Handle the track subcommand — price tracking logic (was main())."""
     run_scrape = args.all or args.scrape
     run_tcgcsv = args.all or args.tcgcsv
     run_trends = args.all or args.trends
