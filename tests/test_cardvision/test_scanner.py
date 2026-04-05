@@ -140,3 +140,27 @@ def test_scan_result_has_scan_ms(mock_adapter, tmp_path):
     result = scanner.scan(img)
 
     assert result.scan_ms >= 0
+
+
+def test_card_not_detected_error_propagates(mock_adapter, tmp_path):
+    """CardNotDetectedError from detector propagates out of scan()."""
+    from cardvision.exceptions import CardNotDetectedError
+    scanner = make_scanner(mock_adapter)
+    scanner._detector.detect_and_warp.side_effect = CardNotDetectedError("no card found")
+
+    img = tmp_path / "card.jpg"
+    Image.new("RGB", (400, 560)).save(img)
+    with pytest.raises(CardNotDetectedError):
+        scanner.scan(img)
+
+
+def test_image_load_error_propagates(mock_adapter, tmp_path):
+    """ImageLoadError from detector propagates out of scan()."""
+    from cardvision.exceptions import ImageLoadError
+    scanner = make_scanner(mock_adapter)
+    scanner._detector.detect_and_warp.side_effect = ImageLoadError("bad file")
+
+    bad_path = tmp_path / "not_an_image.txt"
+    bad_path.write_text("text")
+    with pytest.raises(ImageLoadError):
+        scanner.scan(bad_path)
