@@ -180,6 +180,7 @@ class TestRunScan:
 
         with patch("pokeassistant.cli.CardScanner") as mock_scanner_cls, \
              patch("pokeassistant.cli.PokemonAdapter") as mock_adapter_cls, \
+             patch("pokeassistant.cli._get_market_price", return_value=None) as mock_price, \
              patch("pokeassistant.cli.Path") as mock_path_cls:
             mock_adapter = MagicMock()
             mock_adapter_cls.return_value = mock_adapter
@@ -197,3 +198,4 @@ class TestRunScan:
             run_scan(args)
 
             mock_scanner.scan.assert_called_once()
+            mock_price.assert_called_once_with(1)

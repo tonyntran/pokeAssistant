@@ -15,12 +15,10 @@ from pokeassistant.models import Product
 # These will be None if the vision extras are not installed.
 try:
     from cardvision.scanner import CardScanner, EMBEDDING_WARN_THRESHOLD
-    from cardvision.exceptions import IndexNotBuiltError
     from pokeassistant.vision import PokemonAdapter
 except ImportError:
     CardScanner = None  # type: ignore[assignment,misc]
     EMBEDDING_WARN_THRESHOLD = None  # type: ignore[assignment]
-    IndexNotBuiltError = None  # type: ignore[assignment,misc]
     PokemonAdapter = None  # type: ignore[assignment,misc]
 
 
@@ -90,6 +88,8 @@ def run_scan(args: argparse.Namespace) -> None:
         answer = input("Build it now? Downloads DINOv2 model (~85MB) + card images (~5 min). [y/N] ")
         if answer.strip().lower() == "y":
             _run_build_index(CardScanner, adapter)
+            print("Index ready — scanning image…")
+            # falls through to scanner.scan() intentionally
         else:
             print("Run: pokeassistant scan --build-index")
             sys.exit(0)
@@ -102,16 +102,14 @@ def run_scan(args: argparse.Namespace) -> None:
     _print_result(result, EMBEDDING_WARN_THRESHOLD, market_cents)
 
 
-def _run_build_index(CardScanner, adapter) -> None:
-    report = CardScanner.build_index(adapter)
+def _run_build_index(scanner_cls, adapter) -> None:
+    report = scanner_cls.build_index(adapter)
     print(f"\nIndex built: {report.embedded}/{report.total} cards embedded "
           f"({report.skipped} skipped) in {report.duration_seconds:.0f}s")
 
 
 def _get_market_price(product_id: int) -> int | None:
     """Look up latest market price in cents for a product_id. Returns None if unavailable."""
-    from pokeassistant.database import get_engine, get_session_factory
-    from pokeassistant.repositories.sqlalchemy_repo import SQLAlchemyRepository
     session = get_session_factory()()
     try:
         repo = SQLAlchemyRepository(session)
@@ -128,7 +126,7 @@ def _get_market_price(product_id: int) -> int | None:
 def _print_result(result, warn_threshold: float, market_cents: int | None = None) -> None:
     top = result.top
     warn = " ⚠ low confidence" if top.confidence < warn_threshold else ""
-    price_str = f"  market: ${market_cents / 100:.2f}\n" if market_cents else ""
+    price_str = f"  market: ${market_cents / 100:.2f}\n" if market_cents is not None else ""
     print(f"\n✓ {top.card.name} — {top.card.set_name} ({top.card.metadata.get('card_number', '?')})")
     print(f"  match:  {top.confidence:.0%} via {top.method}{warn}")
     print(f"{price_str}  time:   {result.scan_ms:.0f}ms")
