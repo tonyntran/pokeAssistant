@@ -4,8 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from pokeassistant.config import get_data_dir
-from pokeassistant.database import get_engine, get_session_factory
-from pokeassistant.models import Product
+from pokeassistant.database import get_session_factory
 from pokeassistant.repositories.sqlalchemy_repo import SQLAlchemyRepository
 from cardvision.result import CardRecord
 
@@ -16,19 +15,11 @@ class PokemonAdapter:
     game_id = "pokemon"
 
     def get_card_catalog(self) -> list[CardRecord]:
-        """Return all products with image_url set, as CardRecords.
-
-        These are used by CardIndex.build() to download images and create embeddings.
-        Filters only by image_url IS NOT NULL — no product_type filter, per spec.
-        """
-        session = get_session_factory(get_engine())()
+        """Return all products with image_url set, as CardRecords."""
+        session = get_session_factory()()
         try:
-            products = (
-                session.query(Product)
-                .filter(Product.image_url.isnot(None))
-                .all()
-            )
-            return [_product_to_record(p) for p in products]
+            repo = SQLAlchemyRepository(session)
+            return [_product_to_record(p) for p in repo.list_cards_with_images()]
         finally:
             session.close()
 
@@ -44,7 +35,7 @@ class PokemonAdapter:
         Returns multiple cards when the same name+number maps to different printings
         (e.g. Shadowless vs Unlimited Base Set).
         """
-        session = get_session_factory(get_engine())()
+        session = get_session_factory()()
         try:
             repo = SQLAlchemyRepository(session)
             products = repo.find_by_name_and_number(name, set_number)
@@ -53,7 +44,7 @@ class PokemonAdapter:
             session.close()
 
 
-def _product_to_record(p: Product) -> CardRecord:
+def _product_to_record(p) -> CardRecord:
     return CardRecord(
         card_id=str(p.product_id),
         name=p.name,

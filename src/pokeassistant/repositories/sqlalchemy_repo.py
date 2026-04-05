@@ -237,6 +237,18 @@ class SQLAlchemyRepository(CardRepository):
 
         return q.limit(20).all()
 
+    def list_cards_with_images(self) -> list[Product]:
+        """Return all products that have an image_url set.
+
+        Used by PokemonAdapter.get_card_catalog() to build the FAISS index.
+        Fetches all matching rows without limit (contrast with search() which has .limit(20)).
+        """
+        return (
+            self.session.query(Product)
+            .filter(Product.image_url.isnot(None))
+            .all()
+        )
+
     def find_by_name_and_number(self, name: str, card_number: str) -> list[Product]:
         """Find products matching both name (case-insensitive substring) and card_number exactly.
 
