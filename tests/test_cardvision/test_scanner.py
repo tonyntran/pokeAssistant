@@ -80,6 +80,7 @@ def test_falls_through_to_embedding_when_ocr_low_confidence(mock_adapter, tmp_pa
 
     assert result.top.method == "embedding"
     scanner._embedder.embed.assert_called_once()
+    mock_adapter.lookup_by_text.assert_not_called()
 
 
 def test_falls_through_to_embedding_when_ocr_ambiguous(mock_adapter, tmp_path):
@@ -111,6 +112,7 @@ def test_falls_through_to_embedding_when_ocr_returns_none(mock_adapter, tmp_path
 
     assert result.top.method == "embedding"
     assert result.top.card.card_id == "3"
+    mock_adapter.lookup_by_text.assert_not_called()
 
 
 def test_low_embedding_confidence_result_still_returned(mock_adapter, tmp_path):
