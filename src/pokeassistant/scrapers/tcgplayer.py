@@ -30,12 +30,24 @@ PRODUCT_URL = "https://www.tcgplayer.com/product/{product_id}"
 def parse_product_details(data: dict) -> Product:
     """Parse the /v2/product/{id}/details response into a Product."""
     product_id = int(data["productId"])
+    category = data.get("productLineUrlName", "Pokemon")
+    # Classify as card (single) or sealed based on category keywords
+    cat_lower = (data.get("customAttributes", {}).get("productTypeName", "") or "").lower()
+    if not cat_lower:
+        cat_lower = (data.get("productTypeName", "") or "").lower()
+    if "single" in cat_lower or "card" in cat_lower:
+        product_type = "card"
+    elif "sealed" in cat_lower or "box" in cat_lower or "pack" in cat_lower or "bundle" in cat_lower:
+        product_type = "sealed"
+    else:
+        product_type = None
     return Product(
         product_id=product_id,
         name=data.get("productName", data.get("productUrlName", "")),
-        category=data.get("productLineUrlName", "Pokemon"),
+        category=category,
         group_name=data.get("setName"),
         url=PRODUCT_URL.format(product_id=product_id),
+        product_type=product_type,
     )
 
 
